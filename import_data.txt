@@ -1,0 +1,28 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoimport.exe" --db loan_analytics_db --collection loans --type csv --headerline --file "C:\Users\munga\Downloads\loan_dataset_fully_cleaned.csv"
+2026-02-24T15:51:59.827+0400    connected to: mongodb://localhost/
+2026-02-24T15:52:02.146+0400    99990 document(s) imported successfully. 0 document(s) failed to import.
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoimport.exe" --db loan_analytics_db --collection loans --type csv --headerline --file "C:\Users\munga\Documents\LoanMongoProject\loan_curated_dataset.csv"
+2026-02-24T15:58:11.930+0400    connected to: mongodb://localhost/
+2026-02-24T15:58:14.931+0400    [##########..............] loan_analytics_db.loans      20.1MB/47.5MB (42.2%)
+2026-02-24T15:58:17.931+0400    [#############...........] loan_analytics_db.loans      26.9MB/47.5MB (56.5%)
+2026-02-24T15:58:20.930+0400    [################........] loan_analytics_db.loans      33.6MB/47.5MB (70.8%)
+2026-02-24T15:58:23.931+0400    [####################....] loan_analytics_db.loans      40.7MB/47.5MB (85.5%)
+2026-02-24T15:58:26.826+0400    [########################] loan_analytics_db.loans      47.5MB/47.5MB (100.0%)
+2026-02-24T15:58:26.826+0400    1048575 document(s) imported successfully. 0 document(s) failed to import.
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoimport.exe" --db loan_analytics_db --collection loans --type csv --headerline --file "C:\Users\munga\Documents\LoanMongoProject\loan_curated_dataset.csv"
+2026-02-24T16:15:11.784+0400    connected to: mongodb://localhost/
+2026-02-24T16:15:14.785+0400    [###########.............] loan_analytics_db.loans      20.2MB/43.0MB (47.0%)
+2026-02-24T16:15:17.784+0400    [##############..........] loan_analytics_db.loans      26.1MB/43.0MB (60.7%)
+2026-02-24T16:15:20.784+0400    [#################.......] loan_analytics_db.loans      32.0MB/43.0MB (74.3%)
+2026-02-24T16:15:23.784+0400    [#####################...] loan_analytics_db.loans      37.7MB/43.0MB (87.7%)
+2026-02-24T16:15:26.632+0400    [########################] loan_analytics_db.loans      43.0MB/43.0MB (100.0%)
+2026-02-24T16:15:26.632+0400    1048575 document(s) imported successfully. 0 document(s) failed to import.
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoimport.exe" --db loan_analytics_db --collection loans --type csv --headerline --file "C:\Users\munga\Documents\LoanMongoProject\loan_curated_dataset.csv"
+2026-02-24T16:18:49.455+0400    connected to: mongodb://localhost/
+2026-02-24T16:18:51.251+0400    100000 document(s) imported successfully. 0 document(s) failed to import.
+PS C:\Users\munga>
