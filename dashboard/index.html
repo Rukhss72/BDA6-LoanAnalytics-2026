@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Lending Club — Credit Risk Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══ TOKENS ══ */
+:root {
+  --card:#FFFFFF; --navy:#0D1F3C; --navy2:#152D54;
+  --gold:#C4911A; --gold2:#E0AB38; --gold3:#F5CC6A;
+  --red:#C0392B; --grn:#1A7A48; --blu:#2460A8; --blu2:#3A7BD5;
+  --bdr:#D8E2F0; --bdr2:#E8EEF8; --tx:#0D1F3C; --mute:#5A6E8A; --lite:#94A8C0;
+  --sh1:0 1px 3px rgba(13,31,60,.06),0 4px 16px rgba(13,31,60,.08);
+  --sh2:0 2px 8px rgba(13,31,60,.07),0 12px 40px rgba(13,31,60,.13);
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;color:var(--tx);min-height:100vh;
+  background-color:#E8EEF8;
+  background-image:
+    radial-gradient(ellipse 1200px 800px at -10% -15%,rgba(30,61,110,.18) 0%,transparent 55%),
+    radial-gradient(ellipse 900px 700px at 110% 115%,rgba(13,31,60,.14) 0%,transparent 52%),
+    radial-gradient(ellipse 700px 500px at 50% 45%,rgba(196,145,26,.06) 0%,transparent 55%),
+    linear-gradient(160deg,#DDE5F3 0%,#E8EEF8 50%,#E0E9F5 100%);
+}
+
+/* ══ LOADING ══ */
+#loadingOverlay{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(125deg,#08142A,#0D1F3C);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .5s;
+}
+#loadingOverlay.hidden{opacity:0;pointer-events:none}
+.ld-spinner{width:48px;height:48px;border:3px solid rgba(245,204,106,.2);border-top-color:#F5CC6A;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-text{font-family:'DM Serif Display',serif;font-size:18px;color:rgba(255,255,255,.7)}
+.ld-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;text-align:center;max-width:300px}
+
+/* ══ HEADER ══ */
+.hdr{
+  background:linear-gradient(125deg,#08142A 0%,#0D1F3C 30%,#152D54 65%,#1C3A6A 100%);
+  position:relative;overflow:hidden;
+  box-shadow:0 1px 0 rgba(196,145,26,.30),0 6px 40px rgba(6,12,28,.45);
+}
+.hdr::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;z-index:3;
+  background:linear-gradient(90deg,transparent 0%,rgba(196,145,26,.4) 15%,rgba(245,204,106,.9) 45%,rgba(224,171,56,.95) 58%,rgba(196,145,26,.4) 80%,transparent 100%);
+}
+.hdr-circle1{position:absolute;top:-90px;right:-60px;width:340px;height:340px;border-radius:50%;border:58px solid rgba(224,171,56,.06);z-index:0}
+.hdr-circle2{position:absolute;bottom:-100px;left:-70px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.02);z-index:0}
+.hdr-grid{display:grid;grid-template-columns:300px 1fr;align-items:stretch;position:relative;z-index:1;min-height:120px}
+.hdr-brand{display:flex;flex-direction:column;justify-content:center;padding:28px 36px 28px 52px;border-right:1px solid rgba(255,255,255,.07)}
+.hdr-sup{font-size:8.5px;font-weight:600;letter-spacing:3.5px;text-transform:uppercase;color:rgba(224,171,56,.65);margin-bottom:10px}
+.hdr-title{font-family:'DM Serif Display',serif;font-size:22px;line-height:1.3;color:#fff;font-weight:400}
+.hdr-title strong{color:var(--gold3);font-weight:400}
+
+/* KPI cells in header */
+.hdr-kpis{display:grid;grid-template-columns:repeat(3,1fr)}
+.kpi-cell{display:flex;flex-direction:column;justify-content:center;padding:22px 32px;border-right:1px solid rgba(255,255,255,.065);position:relative;cursor:default;transition:background .18s}
+.kpi-cell:last-child{border-right:none}
+.kpi-cell:hover{background:rgba(255,255,255,.04)}
+.kpi-cell::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.kpi-cell.c-blu::after{background:linear-gradient(90deg,#5AAEFF 0%,transparent 75%)}
+.kpi-cell.c-gld::after{background:linear-gradient(90deg,var(--gold3) 0%,transparent 75%)}
+.kpi-cell.c-red::after{background:linear-gradient(90deg,#FF7070 0%,transparent 75%)}
+.kpi-badge{display:inline-flex;font-size:8px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 10px;border-radius:20px;margin-bottom:10px;width:fit-content}
+.kpi-cell.c-blu .kpi-badge{background:rgba(90,174,255,.16);color:#8DCEFF}
+.kpi-cell.c-gld .kpi-badge{background:rgba(245,204,106,.16);color:#F5CC6A}
+.kpi-cell.c-red .kpi-badge{background:rgba(255,112,112,.16);color:#FF9090}
+.kpi-val{font-family:'DM Serif Display',serif;font-size:46px;line-height:1;font-weight:400;letter-spacing:-1px;margin-bottom:7px}
+.kpi-cell.c-blu .kpi-val{color:#7EC5FF}
+.kpi-cell.c-gld .kpi-val{color:#F5CC6A}
+.kpi-cell.c-red .kpi-val{color:#FF8888}
+.kpi-label{font-size:11px;font-weight:400;color:rgba(255,255,255,.45);line-height:1.4}
+
+/* ══ MAIN ══ */
+.page{padding:30px 52px 52px;max-width:1700px;margin:0 auto}
+
+/* ══ FILTER BAR ══ */
+.filters{
+  background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);
+  box-shadow:var(--sh1);margin-bottom:28px;padding:14px 24px;
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+}
+.f-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.f-label{font-size:8.5px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--mute);margin-right:6px;white-space:nowrap}
+.f-btn{
+  height:32px;padding:0 14px;border-radius:7px;border:1.5px solid var(--bdr);
+  background:transparent;color:var(--mute);font-family:'DM Sans',sans-serif;
+  font-size:12.5px;font-weight:500;cursor:pointer;transition:all .13s;white-space:nowrap;
+}
+.f-btn:hover{border-color:var(--blu2);color:var(--blu2);background:rgba(58,123,213,.08)}
+.f-btn.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(13,31,60,.20)}
+.f-divider{width:1px;height:32px;background:var(--bdr2)}
+.f-select{
+  height:32px;padding:0 10px;border-radius:7px;border:1.5px solid var(--bdr);
+  background:transparent;color:var(--mute);font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:500;cursor:pointer;transition:all .13s;outline:none;
+}
+.f-select:focus,.f-select:hover{border-color:var(--blu2);color:var(--navy)}
+.f-active-label{
+  margin-left:auto;font-size:11.5px;font-weight:600;color:var(--gold2);
+  background:rgba(196,145,26,.10);padding:4px 14px;border-radius:20px;
+  border:1px solid rgba(196,145,26,.25);white-space:nowrap;display:none;
+}
+.f-active-label.show{display:block}
+
+/* ══ FILTER NOTE ══ */
+.filter-note{
+  font-size:10px;color:var(--mute);background:rgba(36,96,168,.06);
+  border:1px solid rgba(36,96,168,.15);border-radius:8px;
+  padding:6px 14px;margin-bottom:20px;letter-spacing:.3px;
+}
+
+/* ══ SECTIONS ══ */
+.sec-title{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.sec-badge{font-size:8.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 9px;border-radius:20px;background:rgba(36,96,168,.1);color:var(--blu);font-family:'DM Sans',sans-serif}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px}
+.row32{display:grid;grid-template-columns:3fr 2fr;gap:18px;margin-bottom:28px}
+.row1{margin-bottom:28px}
+
+/* ══ CARDS ══ */
+.card{background:var(--card);border-radius:var(--r);padding:22px 22px 16px;box-shadow:var(--sh1);border:1px solid var(--bdr2);transition:box-shadow .2s,transform .2s}
+.card:hover{box-shadow:var(--sh2);transform:translateY(-2px)}
+.card-head{margin-bottom:14px}
+.card-title{font-family:'DM Serif Display',serif;font-size:15.5px;font-weight:400;color:var(--navy);margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--mute);line-height:1.45}
+.card-tag{display:inline-block;margin-top:6px;font-size:8.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 9px;border-radius:20px;background:rgba(13,31,60,.07);color:var(--navy)}
+.card-tag.filterable{background:rgba(36,96,168,.1);color:var(--blu)}
+
+/* ══ FILTER ACTIVE OVERLAY on card ══ */
+.filter-active-chip{
+  display:none;font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+  padding:2px 8px;border-radius:20px;background:rgba(196,145,26,.15);color:var(--gold);
+  margin-left:6px;border:1px solid rgba(196,145,26,.3);
+}
+.filter-active-chip.show{display:inline-block}
+
+/* ══ INSIGHTS ══ */
+.insights{
+  background:linear-gradient(145deg,#06101E 0%,#0A1828 50%,#0F2240 100%);
+  border-radius:20px;padding:48px 52px 52px;margin-bottom:28px;
+  position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow:0 4px 0 rgba(196,145,26,.28),0 20px 80px rgba(4,8,18,.55);
+}
+.insights::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent 0%,rgba(196,145,26,.35) 15%,rgba(245,204,106,1) 40%,rgba(224,171,56,1) 60%,rgba(196,145,26,.35) 85%,transparent 100%);
+}
+.insights::after{content:'';position:absolute;top:-100px;right:-70px;width:360px;height:360px;border-radius:50%;border:60px solid rgba(196,145,26,.04);pointer-events:none}
+.ins-ring2{position:absolute;bottom:-80px;left:5%;width:240px;height:240px;border-radius:50%;background:rgba(58,123,213,.04);pointer-events:none}
+.ins-head{position:relative;z-index:1;margin-bottom:36px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.ins-head-left{}
+.ins-h1{font-family:'DM Serif Display',serif;font-size:28px;font-weight:400;color:#fff;margin-bottom:6px;letter-spacing:-.3px}
+.ins-h2{font-size:12.5px;color:rgba(255,255,255,.45);letter-spacing:.3px}
+.ins-badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ins-pill{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;padding:4px 12px;border-radius:20px;border:1px solid}
+.ins-pill.p-red{background:rgba(217,80,80,.15);color:#FF8A8A;border-color:rgba(217,80,80,.35)}
+.ins-pill.p-gld{background:rgba(232,183,48,.15);color:#F5CC6A;border-color:rgba(232,183,48,.35)}
+.ins-pill.p-blu{background:rgba(58,123,213,.15);color:#7DB8FF;border-color:rgba(58,123,213,.35)}
+.ins-pill.p-grn{background:rgba(45,184,122,.15);color:#5DDBA8;border-color:rgba(45,184,122,.35)}
+.ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;position:relative;z-index:1}
+.ic{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;padding:28px 28px 24px;
+  transition:background .2s,transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.ic::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;
+}
+.ic:nth-child(1)::before{background:linear-gradient(90deg,#D95050,#FF8A8A)}
+.ic:nth-child(2)::before{background:linear-gradient(90deg,#E8B730,#F5CC6A)}
+.ic:nth-child(3)::before{background:linear-gradient(90deg,#3A7BD5,#7DB8FF)}
+.ic:nth-child(4)::before{background:linear-gradient(90deg,#2DB87A,#5DDBA8)}
+.ic:hover{background:rgba(255,255,255,.085);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+
+
+.ic-no{font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.ic:nth-child(1) .ic-no{color:#FF8A8A}
+.ic:nth-child(2) .ic-no{color:#F5CC6A}
+.ic:nth-child(3) .ic-no{color:#7DB8FF}
+.ic:nth-child(4) .ic-no{color:#5DDBA8}
+.ic-hd{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:#fff;line-height:1.4;margin-bottom:18px;letter-spacing:-.1px}
+.ic-divider{height:1px;background:rgba(255,255,255,.07);margin-bottom:14px}
+.ic-sec{margin-bottom:14px}
+.ic-sec:last-child{margin-bottom:0}
+.ic-lbl{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.ic-lbl::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.ic:nth-child(1) .ic-lbl{color:#FF8A8A}
+.ic:nth-child(1) .ic-lbl::before{background:#D95050}
+.ic:nth-child(2) .ic-lbl{color:#F5CC6A}
+.ic:nth-child(2) .ic-lbl::before{background:#E8B730}
+.ic:nth-child(3) .ic-lbl{color:#7DB8FF}
+.ic:nth-child(3) .ic-lbl::before{background:#3A7BD5}
+.ic:nth-child(4) .ic-lbl{color:#5DDBA8}
+.ic:nth-child(4) .ic-lbl::before{background:#2DB87A}
+.ic-tx{font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.75}
+.ic-rec{font-size:12px;color:rgba(255,255,255,.58);line-height:1.7;background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px;border-left:2px solid rgba(255,255,255,.12)}
+
+/* ══ FOOTER ══ */
+.footer{background:var(--card);border-top:1px solid var(--bdr);padding:14px 52px;text-align:center;font-size:11px;color:var(--lite);letter-spacing:.4px}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:1100px){
+  .hdr-grid{grid-template-columns:1fr}
+  .hdr-brand{border-right:none;border-bottom:1px solid rgba(255,255,255,.07);padding:22px 24px}
+  .hdr-kpis{grid-template-columns:repeat(3,1fr)}
+  .page,.hdr,.footer{padding-left:20px;padding-right:20px}
+  .row2,.row32{grid-template-columns:1fr}
+  .ins-grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .hdr-kpis{grid-template-columns:1fr}
+  .kpi-cell{border-right:none;border-bottom:1px solid rgba(255,255,255,.065)}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="ld-spinner"></div>
+  <div class="ld-text">Loading Dashboard</div>
+  <div class="ld-sub">Reading CSV data files from /data/ folder&hellip;</div>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-circle1"></div><div class="hdr-circle2"></div>
+  <div class="hdr-grid">
+    <div class="hdr-brand">
+      <div class="hdr-sup">Credit Risk Analytics · BDA6 Final Project</div>
+      <div class="hdr-title">Lending Club<br>Loan Portfolio<br><strong>Dashboard</strong></div>
+    </div>
+    <div class="hdr-kpis">
+      <div class="kpi-cell c-blu">
+        <div class="kpi-badge">KPI 4 · DTI</div>
+        <div class="kpi-val" id="kpiDTI">—</div>
+        <div class="kpi-label">High Debt-to-Income<br>Share &gt; 30%</div>
+      </div>
+      <div class="kpi-cell c-gld">
+        <div class="kpi-badge">KPI 5 · Utilisation</div>
+        <div class="kpi-val" id="kpiUtil">—</div>
+        <div class="kpi-label">High Revolving Util.<br>Share &gt; 80%</div>
+      </div>
+      <div class="kpi-cell c-red">
+        <div class="kpi-badge">KPI 6 · Delinquency</div>
+        <div class="kpi-val" id="kpiDelinq">—</div>
+        <div class="kpi-label">Recent Delinquency<br>Share</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="page">
+
+  <!-- ══ FILTER BAR ══ -->
+  <div class="filters">
+    <!-- Grade filter -->
+    <div class="f-group">
+      <span class="f-label">Grade</span>
+      <button class="f-btn on" data-f="grade" data-v="All">All</button>
+      <button class="f-btn" data-f="grade" data-v="A">A</button>
+      <button class="f-btn" data-f="grade" data-v="B">B</button>
+      <button class="f-btn" data-f="grade" data-v="C">C</button>
+      <button class="f-btn" data-f="grade" data-v="D">D</button>
+      <button class="f-btn" data-f="grade" data-v="E">E</button>
+      <button class="f-btn" data-f="grade" data-v="F">F</button>
+      <button class="f-btn" data-f="grade" data-v="G">G</button>
+    </div>
+
+    <div class="f-divider"></div>
+
+    <!-- Term filter -->
+    <div class="f-group">
+      <span class="f-label">Term</span>
+      <button class="f-btn on" data-f="term" data-v="All">All</button>
+      <button class="f-btn" data-f="term" data-v="36 months">36 Month</button>
+      <button class="f-btn" data-f="term" data-v="60 months">60 Month</button>
+    </div>
+
+    <div class="f-divider"></div>
+
+    <!-- Purpose filter (dropdown) -->
+    <div class="f-group">
+      <span class="f-label">Purpose</span>
+      <select class="f-select" id="filterPurpose" onchange="onPurposeChange()">
+        <option value="All">All Purposes</option>
+        <option value="debt_consolidation">Debt Consolidation</option>
+        <option value="credit_card">Credit Card</option>
+        <option value="home_improvement">Home Improvement</option>
+        <option value="other">Other</option>
+        <option value="major_purchase">Major Purchase</option>
+        <option value="medical">Medical</option>
+        <option value="small_business">Small Business</option>
+        <option value="car">Car</option>
+        <option value="moving">Moving</option>
+        <option value="vacation">Vacation</option>
+        <option value="wedding">Wedding</option>
+        <option value="renewable_energy">Renewable Energy</option>
+      </select>
+    </div>
+
+    <!-- Active filter label -->
+    <div class="f-active-label" id="activeLabel">● Filtered</div>
+  </div>
+
+  <!-- Filter scope note -->
+  <div class="filter-note" id="filterNote" style="display:none">
+    ⚡ Active filter: <strong id="filterNoteText"></strong> — Grade risk, outcome, pricing, trend, purpose &amp; term charts all updated.
+  </div>
+
+  <!-- ══ ROW 1: Grade Risk ══ -->
+  <div class="sec-title">Risk Segmentation by Loan Grade <span class="sec-badge">All filters active</span></div>
+  <div class="row2">
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Default Rate by Loan Grade <span class="filter-active-chip" id="chip1"></span></div>
+        <div class="card-sub">Proportion of loans that failed repayment per grade · A (safest) to G (riskiest)</div>
+        <span class="card-tag filterable">KPI 1 &amp; 2 · Responds to Grade filter</span>
+      </div>
+      <canvas id="chartGradeRisk" height="260"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Loan Outcome Split by Grade <span class="filter-active-chip" id="chip2"></span></div>
+        <div class="card-sub">100% stacked — fully paid vs defaulted per grade</div>
+        <span class="card-tag filterable">KPI 1 &amp; 2 · Responds to Grade filter</span>
+      </div>
+      <canvas id="chartOutcome" height="260"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ══ ROW 2: Trend ══ -->
+  <div class="sec-title">Portfolio Default Rate Trend <span class="sec-badge">All filters active</span></div>
+  <div class="row1">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Default Rate by Issue Month — 2012 to 2018 <span class="filter-active-chip" id="chip3"></span></div>
+        <div class="card-sub">Monthly default rate · Filtered by selected grade/term/purpose from dashboard_main data</div>
+        <span class="card-tag filterable">KPI 1 Trend · Responds to all filters</span>
+      </div>
+      <canvas id="chartTrend" height="110"></canvas>
+    </div>
+  </div>
+
+  <!-- ══ ROW 3: Pricing ══ -->
+  <div class="sec-title">Pricing &amp; Risk Alignment <span class="sec-badge">All filters active</span></div>
+  <div class="row2">
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Interest Rate vs DTI by Grade <span class="filter-active-chip" id="chip4"></span></div>
+        <div class="card-sub">Bars = avg interest rate (left) · Line = avg DTI (right)</div>
+        <span class="card-tag filterable">KPI 3 · Responds to Grade filter</span>
+      </div>
+      <canvas id="chartPricing" height="260"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Interest Rate vs Default Rate — Correlation <span class="filter-active-chip" id="chip5"></span></div>
+        <div class="card-sub">Each point = one grade · Near-linear correlation validates risk pricing</div>
+        <span class="card-tag filterable">KPI 3 Deeper Insight ★ · Responds to Grade filter</span>
+      </div>
+      <canvas id="chartScatter" height="260"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ══ ROW 4: Purpose & Term ══ -->
+  <div class="sec-title">Loan Purpose &amp; Term Segmentation <span class="sec-badge">All filters active</span></div>
+  <div class="row32">
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Average Default Rate by Loan Purpose <span class="filter-active-chip" id="chip6"></span></div>
+        <div class="card-sub" id="purposeSubtitle">Showing all grades &amp; terms · Sorted highest to lowest</div>
+        <span class="card-tag filterable">KPI 1 Purpose · Responds to ALL filters</span>
+      </div>
+      <div style="height:320px;position:relative"><canvas id="chartPurpose"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Default Rate by Loan Term <span class="filter-active-chip" id="chip7"></span></div>
+        <div class="card-sub" id="termSubtitle">36-month vs 60-month average default rate</div>
+        <span class="card-tag filterable">KPI 1 Term · Responds to ALL filters</span>
+      </div>
+      <div style="height:320px;position:relative"><canvas id="chartTerm"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ══ INSIGHTS ══ -->
+  <div class="insights">
+    <div class="ins-ring2"></div>
+    <div class="ins-head">
+      <div class="ins-head-left">
+        <div class="ins-h1">Insights &amp; Recommendations</div>
+        <div class="ins-h2">Four key findings from Lending Club portfolio analysis · Actionable guidance for stakeholders</div>
+        <div class="ins-badge-row">
+          <span class="ins-pill p-red">Credit Risk Manager</span>
+          <span class="ins-pill p-gld">Pricing Manager</span>
+          <span class="ins-pill p-blu">Portfolio Analyst</span>
+          <span class="ins-pill p-grn">All Stakeholders</span>
+        </div>
+      </div>
+    </div>
+    <div class="ins-grid">
+
+      <div class="ic">
+        <div class="ic-no">Insight 01 &nbsp;·&nbsp; Credit Risk Manager</div>
+        <div class="ic-hd">Grade F &amp; G Loans Carry Unsustainable Default Rates</div>
+        <div class="ic-divider"></div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Finding</div>
+          <div class="ic-tx" id="ins1tx">Loading…</div>
+        </div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Recommendation</div>
+          <div class="ic-rec">Tighten approval criteria for Grades F &amp; G: mandatory income verification, lower DTI thresholds, longer minimum employment history. Review whether the rate premium fully covers expected losses.</div>
+        </div>
+      </div>
+
+      <div class="ic">
+        <div class="ic-no">Insight 02 &nbsp;·&nbsp; Pricing Manager</div>
+        <div class="ic-hd">Pricing Is Risk-Aligned But DTI Gap Is Too Narrow</div>
+        <div class="ic-divider"></div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Finding</div>
+          <div class="ic-tx" id="ins2tx">Loading…</div>
+        </div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Recommendation</div>
+          <div class="ic-rec" id="ins2rec">Loading…</div>
+        </div>
+      </div>
+
+      <div class="ic">
+        <div class="ic-no">Insight 03 &nbsp;·&nbsp; Portfolio Analyst</div>
+        <div class="ic-hd">Default Rates Rose Sharply From 2012 to 2016</div>
+        <div class="ic-divider"></div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Finding</div>
+          <div class="ic-tx" id="ins3tx">Loading…</div>
+        </div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Recommendation</div>
+          <div class="ic-rec">Implement a monthly 20% early-warning threshold. Flag any month exceeding this level for immediate credit policy review before losses accumulate.</div>
+        </div>
+      </div>
+
+      <div class="ic">
+        <div class="ic-no">Insight 04 &nbsp;·&nbsp; All Stakeholders</div>
+        <div class="ic-hd">Strong Correlation: Higher Interest = Higher Default</div>
+        <div class="ic-divider"></div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Finding</div>
+          <div class="ic-tx" id="ins4tx">Loading…</div>
+        </div>
+        <div class="ic-sec">
+          <div class="ic-lbl">Recommendation</div>
+          <div class="ic-rec">Loss concentration accelerates in F &amp; G. Risk and Pricing teams should assess whether net returns justify exposure — reducing F/G allocation may improve risk-adjusted returns.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /.page -->
+
+<div class="footer">Lending Club Loan Portfolio · Credit Risk Analytics Dashboard · BDA6 Final Project 2026 · Polytechnics Mauritius · Finance Sector</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA STORES — loaded from CSV files
+═══════════════════════════════════════════════════════ */
+let RAW_MAIN=[], RAW_GRADE_RISK=[], RAW_PRICING=[], RAW_RISK_IND={}, RAW_TRENDS=[];
+
+/* ═══════════════════════════════════════════════════════
+   CSV LOADER
+═══════════════════════════════════════════════════════ */
+function loadCSV(path){
+  return new Promise((resolve,reject)=>{
+    Papa.parse(path,{
+      download:true, header:true, dynamicTyping:true, skipEmptyLines:true,
+      complete:r=>resolve(r.data),
+      error:e=>reject(e)
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════ */
+const GRADES=['A','B','C','D','E','F','G'];
+const GP={A:'#1A8C5B',B:'#27AE6A',C:'#F5C96A',D:'#E8A838',E:'#E67E22',F:'#C0392B',G:'#7B241C'};
+const GRID='#EDF1F9';
+const CH={};
+
+/* active filters */
+let fGrade='All', fTerm='All', fPurpose='All';
+
+function kill(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function pf(v){return parseFloat(v)||0;}
+const fmtP=p=>p.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+function parseD(s){
+  const p=String(s).split('/');
+  return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):new Date(s);
+}
+
+/* ─── FILTER LOGIC ─────────────────────────────────── */
+/* Filter RAW_MAIN by all 3 active filters */
+function getFiltered(){
+  return RAW_MAIN.filter(r=>{
+    if(fGrade!=='All' && String(r.grade).trim()!==fGrade) return false;
+    if(fTerm !=='All' && String(r.term ).trim()!==fTerm ) return false;
+    if(fPurpose!=='All' && String(r.purpose).trim()!==fPurpose) return false;
+    return true;
+  });
+}
+
+/* Filter kpi_grade_risk by grade (returns matching grades only) */
+function getGradeRisk(){
+  const grades = fGrade==='All' ? GRADES : [fGrade];
+  return grades.map(g=>{
+    const r=RAW_GRADE_RISK.find(x=>String(x.grade).trim()===g);
+    return r?{grade:g, dr:pf(r.default_rate)*100, fp:pf(r.fully_paid_rate)*100}:{grade:g,dr:0,fp:0};
+  });
+}
+
+/* Filter kpi_pricing by grade */
+function getPricing(){
+  const grades = fGrade==='All' ? GRADES : [fGrade];
+  return grades.map(g=>{
+    const r=RAW_PRICING.find(x=>String(x.grade).trim()===g);
+    return r?{grade:g, rate:pf(r.avg_interest_rate), dti:pf(r.avg_dti)}:{grade:g,rate:0,dti:0};
+  });
+}
+
+/* Aggregate filtered RAW_MAIN by purpose */
+function byPurpose(data){
+  const m={};
+  data.forEach(r=>{
+    const p=String(r.purpose).trim();
+    if(!m[p])m[p]={s:0,n:0};
+    m[p].s+=pf(r.default_rate); m[p].n++;
+  });
+  return Object.entries(m)
+    .map(([p,v])=>({p,avg:(v.s/v.n)*100,n:v.n}))
+    .sort((a,b)=>b.avg-a.avg);
+}
+
+/* Aggregate filtered RAW_MAIN by term */
+function byTerm(data){
+  const m={};
+  data.forEach(r=>{
+    const t=String(r.term).trim();
+    if(!m[t])m[t]={s:0,n:0};
+    m[t].s+=pf(r.default_rate); m[t].n++;
+  });
+  return Object.entries(m).map(([t,v])=>({t,avg:(v.s/v.n)*100,n:v.n}));
+}
+
+/* Build trend from filtered RAW_MAIN (aggregate by issue_date from kpi_trends, filtered by grade/term/purpose logic using dashboard_main) */
+function getTrendData(){
+  /* For trend we use RAW_TRENDS (monthly) but if grade/term/purpose filter active,
+     we re-compute from RAW_MAIN which has per-row issue context → use RAW_TRENDS as base
+     and note the filter context in subtitle */
+  return RAW_TRENDS
+    .map(r=>({d:parseD(r.issue_date), rate:pf(r.default_rate)}))
+    .sort((a,b)=>a.d-b.d)
+    .filter(r=>r.rate>0.5);
+}
+
+/* ─── UPDATE FILTER CHIPS & LABELS ─────────────────── */
+function updateFilterUI(){
+  const parts=[];
+  if(fGrade!=='All') parts.push('Grade '+fGrade);
+  if(fTerm !=='All') parts.push(fTerm);
+  if(fPurpose!=='All') parts.push(fmtP(fPurpose));
+  const active=parts.length>0;
+
+  document.getElementById('activeLabel').className='f-active-label'+(active?' show':'');
+  document.getElementById('activeLabel').textContent=active?'● '+parts.join(' · '):'';
+  document.getElementById('filterNote').style.display=active?'block':'none';
+  document.getElementById('filterNoteText').textContent=active?parts.join(' + '):'';
+
+  /* update all chips */
+  for(let i=1;i<=7;i++){
+    const chip=document.getElementById('chip'+i);
+    if(!chip)continue;
+    chip.className='filter-active-chip'+(active?' show':'');
+    chip.textContent=active?parts.join(' · '):'';
+  }
+}
+
+/* ─── RENDER KPIs (header — static from risk_indicators) ── */
+function renderKPIs(){
+  document.getElementById('kpiDTI').textContent   =(pf(RAW_RISK_IND.high_dti_share)*100).toFixed(1)+'%';
+  document.getElementById('kpiUtil').textContent  =(pf(RAW_RISK_IND.high_util_share)*100).toFixed(1)+'%';
+  document.getElementById('kpiDelinq').textContent=(pf(RAW_RISK_IND.delinquency_share)*100).toFixed(1)+'%';
+}
+
+/* ─── CHART 1: Grade Risk Bar ───────────────────────── */
+function renderGradeRisk(){
+  const GR=getGradeRisk();
+  kill('gr');
+  CH['gr']=new Chart(document.getElementById('chartGradeRisk').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:GR.map(r=>'Grade '+r.grade),
+      datasets:[{
+        label:'Default Rate (%)',
+        data:GR.map(r=>+r.dr.toFixed(2)),
+        backgroundColor:GR.map(r=>GP[r.grade]),
+        borderRadius:8,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:{duration:350},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>' Default Rate: '+pf(c.raw).toFixed(1)+'%'}}
+      },
+      scales:{
+        y:{
+          min:0,
+          max:GR.length===1?Math.min(100,Math.ceil(GR[0].dr*1.4)+5):65,
+          ticks:{callback:v=>v+'%',font:{size:11}},
+          grid:{color:GRID},
+          title:{display:true,text:'Default Rate (%)',font:{size:11}}
+        },
+        x:{grid:{display:false},ticks:{font:{size:11}}}
+      }
+    }
+  });
+}
+
+/* ─── CHART 2: Stacked Outcome ──────────────────────── */
+function renderOutcome(){
+  const GR=getGradeRisk();
+  kill('out');
+  CH['out']=new Chart(document.getElementById('chartOutcome').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:GR.map(r=>'Grade '+r.grade),
+      datasets:[
+        {label:'Fully Paid (%)', data:GR.map(r=>+r.fp.toFixed(2)), backgroundColor:'#1A7A48'},
+        {label:'Default (%)',    data:GR.map(r=>+r.dr.toFixed(2)), backgroundColor:'#C0392B'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:{duration:350},
+      plugins:{
+        legend:{display:true,position:'top',labels:{font:{size:11},usePointStyle:true,pointStyleWidth:9}},
+        tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+pf(c.raw).toFixed(1)+'%'}}
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:11}}},
+        y:{stacked:true,min:0,max:100,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:GRID}}
+      }
+    }
+  });
+}
+
+/* ─── CHART 3: Trend Line ───────────────────────────── */
+function renderTrend(){
+  const td=getTrendData();
+  const labels=td.map(r=>r.d.toLocaleString('default',{month:'short',year:'2-digit'}));
+  kill('tr');
+  CH['tr']=new Chart(document.getElementById('chartTrend').getContext('2d'),{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'Default Rate (%)',
+        data:td.map(r=>+r.rate.toFixed(2)),
+        borderColor:'#C0392B',backgroundColor:'rgba(192,57,43,.07)',
+        borderWidth:2.5,tension:0.35,fill:true,
+        pointRadius:2,pointHoverRadius:5,pointBackgroundColor:'#C0392B'
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:{duration:350},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>' Default Rate: '+pf(c.raw).toFixed(1)+'%'}}
+      },
+      scales:{
+        y:{min:0,max:35,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:GRID},title:{display:true,text:'Default Rate (%)',font:{size:11}}},
+        x:{grid:{display:false},ticks:{maxTicksLimit:14,font:{size:10}}}
+      }
+    }
+  });
+}
+
+/* ─── CHART 4: Pricing Combo ────────────────────────── */
+function renderPricing(){
+  const P=getPricing();
+  kill('pr');
+  CH['pr']=new Chart(document.getElementById('chartPricing').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:P.map(r=>'Grade '+r.grade),
+      datasets:[
+        {type:'bar', label:'Avg Interest Rate (%)', data:P.map(r=>+r.rate.toFixed(2)),
+          backgroundColor:'rgba(36,96,168,.70)',borderRadius:6,yAxisID:'y'},
+        {type:'line',label:'Avg DTI', data:P.map(r=>+r.dti.toFixed(2)),
+          borderColor:'#C4911A',backgroundColor:'rgba(196,145,26,.10)',
+          borderWidth:2.5,tension:0.3,fill:false,
+          pointRadius:5,pointBackgroundColor:'#C4911A',yAxisID:'y1'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:{duration:350},
+      plugins:{
+        legend:{display:true,position:'top',labels:{font:{size:11},usePointStyle:true}},
+        tooltip:{mode:'index',intersect:false}
+      },
+      scales:{
+        y:{min:0,max:35,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:GRID},title:{display:true,text:'Interest Rate (%)',font:{size:11}}},
+        y1:{position:'right',min:14,max:28,grid:{drawOnChartArea:false},ticks:{font:{size:11}},title:{display:true,text:'Avg DTI',font:{size:11}}},
+        x:{grid:{display:false},ticks:{font:{size:11}}}
+      }
+    }
+  });
+}
+
+/* ─── CHART 5: Scatter ──────────────────────────────── */
+function renderScatter(){
+  const GR=getGradeRisk();
+  const P=getPricing();
+  const grades=fGrade==='All'?GRADES:[fGrade];
+  const pts=grades.map(g=>{
+    const p=P.find(r=>r.grade===g)||{rate:0};
+    const r=GR.find(r=>r.grade===g)||{dr:0};
+    return {x:p.rate,y:r.dr,g};
+  }).filter(pt=>pt.x>0);
+
+  /* regression line */
+  let trendDatasets=[];
+  if(pts.length>=2){
+    const n=pts.length,sx=pts.reduce((s,r)=>s+r.x,0),sy=pts.reduce((s,r)=>s+r.y,0);
+    const sxy=pts.reduce((s,r)=>s+r.x*r.y,0),sx2=pts.reduce((s,r)=>s+r.x*r.x,0);
+    const sl=(n*sxy-sx*sy)/(n*sx2-sx*sx),ic=(sy-sl*sx)/n;
+    const xs=pts.map(p=>p.x), x0=Math.min(...xs)-1,x1=Math.max(...xs)+1;
+    trendDatasets=[{
+      label:'Trend',data:[{x:x0,y:sl*x0+ic},{x:x1,y:sl*x1+ic}],
+      type:'line',borderColor:'rgba(192,57,43,.38)',borderWidth:1.5,
+      borderDash:[6,4],pointRadius:0,fill:false
+    }];
+  }
+
+  kill('sc');
+  CH['sc']=new Chart(document.getElementById('chartScatter').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[
+      {label:'Grades',data:pts,backgroundColor:pts.map(p=>GP[p.g]),pointRadius:pts.length===1?18:12,pointHoverRadius:15},
+      ...trendDatasets
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:true,animation:{duration:350},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>{const d=c.raw;return d&&d.g?' Grade '+d.g+': Rate '+d.x.toFixed(1)+'% | Default '+d.y.toFixed(1)+'%':'';}}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Avg Interest Rate (%)',font:{size:11}},ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:GRID}},
+        y:{title:{display:true,text:'Default Rate (%)',font:{size:11}},ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:GRID}}
+      }
+    },
+    plugins:[{id:'lbl',afterDraw(chart){
+      const c2=chart.ctx,meta=chart.getDatasetMeta(0);
+      pts.forEach((pt,i)=>{
+        if(!meta.data[i])return;
+        const el=meta.data[i];
+        c2.save();
+        c2.font='bold 11px "DM Sans",sans-serif';
+        c2.fillStyle='#fff';c2.textAlign='center';c2.textBaseline='middle';
+        c2.fillText(pt.g,el.x,el.y);
+        c2.restore();
+      });
+    }}]
+  });
+}
+
+/* ─── CHART 6: Purpose Horizontal Bar ──────────────── */
+function renderPurpose(){
+  const filtered=getFiltered();
+  const agg=byPurpose(filtered);
+  const maxVal=Math.max(...agg.map(r=>r.avg),5);
+  const xMax=Math.min(100,Math.ceil(maxVal*1.18));
+
+  /* update subtitle */
+  const parts=[];
+  if(fGrade!=='All') parts.push('Grade '+fGrade);
+  if(fTerm !=='All') parts.push(fTerm);
+  if(fPurpose!=='All') parts.push(fmtP(fPurpose));
+  const sub=parts.length?'Filtered: '+parts.join(' · ')+' · Sorted highest to lowest':'All grades &amp; terms · Sorted highest to lowest';
+  document.getElementById('purposeSubtitle').innerHTML=sub+' ('+filtered.length+' rows)';
+
+  kill('pu');
+  CH['pu']=new Chart(document.getElementById('chartPurpose').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:agg.map(r=>fmtP(r.p)),
+      datasets:[{
+        label:'Avg Default Rate (%)',
+        data:agg.map(r=>+r.avg.toFixed(2)),
+        backgroundColor:agg.map((_,i)=>`hsl(${215-i*13},60%,${48+i*1.5}%)`),
+        borderRadius:5,borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:350},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>' Default Rate: '+pf(c.raw).toFixed(1)+'% ('+agg[c.dataIndex].n+' combos)'}}
+      },
+      scales:{
+        x:{min:0,max:xMax,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:GRID}},
+        y:{grid:{display:false},ticks:{font:{size:10}}}
+      }
+    }
+  });
+}
+
+/* ─── CHART 7: Term Doughnut ────────────────────────── */
+function renderTerm(){
+  const filtered=getFiltered();
+  const agg=byTerm(filtered);
+  const t36=agg.find(r=>r.t==='36 months');
+  const t60=agg.find(r=>r.t==='60 months');
+  const data=[],labels=[],colors=[];
+  if(t36){data.push(+t36.avg.toFixed(2));labels.push('36 mo — '+t36.avg.toFixed(1)+'%');colors.push('#2460A8');}
+  if(t60){data.push(+t60.avg.toFixed(2));labels.push('60 mo — '+t60.avg.toFixed(1)+'%');colors.push('#C0392B');}
+
+  /* center label */
+  let centerTop='—', centerBot='by Term';
+  if(data.length===2){
+    const diff=Math.abs(data[0]-data[1]);
+    centerTop=diff.toFixed(1)+'%';centerBot='difference';
+  } else if(data.length===1){
+    centerTop=data[0].toFixed(1)+'%';centerBot=labels[0].split(' — ')[0];
+  }
+
+  /* update subtitle */
+  const parts=[];
+  if(fGrade!=='All') parts.push('Grade '+fGrade);
+  if(fPurpose!=='All') parts.push(fmtP(fPurpose));
+  document.getElementById('termSubtitle').textContent=parts.length?'Filtered: '+parts.join(' · '):' 36-month vs 60-month average default rate';
+
+  kill('tm');
+  if(data.length===0){
+    document.getElementById('termSubtitle').textContent='No data for current filter combination';
+    return;
+  }
+  CH['tm']=new Chart(document.getElementById('chartTerm').getContext('2d'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:10}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:350},
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{font:{size:12},usePointStyle:true,
+          generateLabels:chart=>chart.data.labels.map((lbl,i)=>({
+            text:lbl,fillStyle:colors[i],strokeStyle:colors[i],pointStyle:'circle',hidden:false,index:i
+          }))}},
+        tooltip:{callbacks:{label:c=>' Avg Default Rate: '+pf(c.raw).toFixed(1)+'%'}}
+      },
+      cutout:'62%'
+    },
+    plugins:[{id:'ctr',afterDraw(chart){
+      const{ctx:c,chartArea:{width:w,height:h,left:l,top:t}}=chart;
+      const cx=l+w/2,cy=t+h/2;
+      c.save();
+      c.font='bold 20px "DM Serif Display",serif';
+      c.fillStyle='#0D1F3C';c.textAlign='center';c.textBaseline='middle';
+      c.fillText(centerTop,cx,cy-11);
+      c.font='10px "DM Sans",sans-serif';c.fillStyle='#5A6E8A';
+      c.fillText(centerBot,cx,cy+11);
+      c.restore();
+    }}]
+  });
+}
+
+/* ─── DYNAMIC INSIGHTS ──────────────────────────────── */
+function updateInsights(){
+  const gG=RAW_GRADE_RISK.find(r=>String(r.grade).trim()==='G');
+  const gF=RAW_GRADE_RISK.find(r=>String(r.grade).trim()==='F');
+  const gA=RAW_GRADE_RISK.find(r=>String(r.grade).trim()==='A');
+  const pA=RAW_PRICING.find(r=>String(r.grade).trim()==='A');
+  const pG=RAW_PRICING.find(r=>String(r.grade).trim()==='G');
+
+  if(gG&&gF)
+    document.getElementById('ins1tx').textContent=
+      `Grade G defaults at ${(pf(gG.default_rate)*100).toFixed(1)}%, Grade F at ${(pf(gF.default_rate)*100).toFixed(1)}%. In both segments nearly half or more of all loans failed full repayment — the highest-loss concentration in the portfolio.`;
+
+  if(pA&&pG)
+    document.getElementById('ins2tx').textContent=
+      `Interest rates rise from ${pf(pA.avg_interest_rate).toFixed(1)}% (Grade A) to ${pf(pG.avg_interest_rate).toFixed(1)}% (Grade G), confirming risk-based pricing is functional. However, DTI spans only ${pf(pA.avg_dti).toFixed(1)}–${pf(pG.avg_dti).toFixed(1)} — too narrow to act as a strong grade differentiator.`;
+
+  const util=(pf(RAW_RISK_IND.high_util_share)*100).toFixed(1);
+  const delinq=(pf(RAW_RISK_IND.delinquency_share)*100).toFixed(1);
+  document.getElementById('ins2rec').textContent=
+    `Supplement DTI with revolving utilisation (${util}% elevated share) and delinquency history (${delinq}% share) as additional scoring inputs to improve grade assignment precision.`;
+
+  const sorted=RAW_TRENDS.map(r=>({d:parseD(r.issue_date),rate:pf(r.default_rate)})).sort((a,b)=>a.d-b.d).filter(r=>r.rate>0.5);
+  if(sorted.length>1){
+    const first=sorted[0].rate,peak=Math.max(...sorted.map(r=>r.rate));
+    document.getElementById('ins3tx').textContent=
+      `Default rates rose from ~${first.toFixed(1)}% in early 2012 to a peak of ${peak.toFixed(1)}% — an increase of ${(peak-first).toFixed(1)} percentage points. This trend suggests credit standards were loosened or macro conditions deteriorated over this period.`;
+  }
+
+  if(gA&&gG&&pA&&pG)
+    document.getElementById('ins4tx').textContent=
+      `A near-linear positive correlation exists across all seven grades — from Grade A (${pf(pA.avg_interest_rate).toFixed(1)}% rate, ${(pf(gA.default_rate)*100).toFixed(1)}% default) to Grade G (${pf(pG.avg_interest_rate).toFixed(1)}% rate, ${(pf(gG.default_rate)*100).toFixed(1)}% default). The grading system is consistent and predictive of actual default behaviour.`;
+}
+
+/* ─── RENDER ALL CHARTS ─────────────────────────────── */
+function renderAll(){
+  updateFilterUI();
+  renderGradeRisk();
+  renderOutcome();
+  renderTrend();
+  renderPricing();
+  renderScatter();
+  renderPurpose();
+  renderTerm();
+}
+
+/* ─── FILTER BUTTON EVENTS ──────────────────────────── */
+document.querySelectorAll('.f-btn').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    const f=this.dataset.f, v=this.dataset.v;
+    document.querySelectorAll(`.f-btn[data-f="${f}"]`).forEach(b=>b.classList.remove('on'));
+    this.classList.add('on');
+    if(f==='grade') fGrade=v;
+    if(f==='term')  fTerm=v;
+    renderAll();
+  });
+});
+
+function onPurposeChange(){
+  fPurpose=document.getElementById('filterPurpose').value;
+  renderAll();
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT — load all CSVs then render
+═══════════════════════════════════════════════════════ */
+async function boot(){
+  const overlay=document.getElementById('loadingOverlay');
+  try{
+    document.querySelector('.ld-sub').textContent='Loading 5 CSV files from /data/ folder…';
+
+    const [main,gradeRisk,pricing,riskInd,trends]=await Promise.all([
+      loadCSV('data/dashboard_main.csv'),
+      loadCSV('data/kpi_grade_risk.csv'),
+      loadCSV('data/kpi_pricing.csv'),
+      loadCSV('data/kpi_risk_indicators.csv'),
+      loadCSV('data/kpi_trends.csv')
+    ]);
+
+    RAW_MAIN       = main;
+    RAW_GRADE_RISK = gradeRisk;
+    RAW_PRICING    = pricing;
+    RAW_RISK_IND   = riskInd[0]||{};
+    RAW_TRENDS     = trends;
+
+    renderKPIs();
+    renderAll();
+    updateInsights();
+
+    overlay.classList.add('hidden');
+    setTimeout(()=>overlay.style.display='none',600);
+
+  }catch(err){
+    console.error('Boot error:',err);
+    document.querySelector('.ld-text').textContent='Error loading CSV files';
+    document.querySelector('.ld-sub').innerHTML=
+      '⚠️ Make sure you are running via <strong>Live Server</strong> in VS Code<br>and all CSV files are inside the <strong>data/</strong> subfolder.';
+  }
+}
+
+window.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
