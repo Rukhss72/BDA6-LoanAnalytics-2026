@@ -1,0 +1,9 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoimport.exe" --db loan_analytics_db --collection loans --type csv --headerline --file "C:\Users\munga\Documents\LoanMongoProject\loan_curated_dataset.csv"
+2026-02-24T16:18:49.455+0400    connected to: mongodb://localhost/
+2026-02-24T16:18:51.251+0400    100000 document(s) imported successfully. 0 document(s) failed to import.
+PS C:\Users\munga>

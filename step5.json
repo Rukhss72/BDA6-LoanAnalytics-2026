@@ -1,0 +1,32 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection kpi_results_grade --type csv --fields _id,default_rate,fully_paid_rate --out "C:\Users\munga\Documents\LoanMongoProject\risk_by_grade.csv"
+2026-02-24T16:43:44.554+0400    connected to: mongodb://localhost/
+2026-02-24T16:43:44.878+0400    exported 100000 records
+PS C:\Users\munga> # Exporting the main statistics
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection dashboard_main_stats --type csv --fields grade,term,purpose,default_rate,fully_paid_rate,avg_int_rate --out "C:\Users\munga\Documents\LoanMongoProject\dashboard_main.csv"
+2026-02-24T17:14:49.605+0400    connected to: mongodb://localhost/
+2026-02-24T17:14:49.610+0400    exported 155 records
+PS C:\Users\munga>
+PS C:\Users\munga> # Exporting the trends
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection dashboard_trends --type csv --fields _id,default_rate --out "C:\Users\munga\Documents\LoanMongoProject\dashboard_trends.csv"
+2026-02-24T17:14:49.692+0400    connected to: mongodb://localhost/
+2026-02-24T17:14:49.695+0400    exported 76 records
+PS C:\Users\munga>
+PS C:\Users\munga> # Exporting the KPI values
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection dashboard_kpi_cards --type csv --fields kpi4_dti_share,kpi5_util_share,kpi6_delinq_share --out "C:\Users\munga\Documents\LoanMongoProject\dashboard_kpis.csv"
+2026-02-24T17:14:50.577+0400    connected to: mongodb://localhost/
+2026-02-24T17:14:50.578+0400    exported 1 record
+PS C:\Users\munga> # Export Grade Summary
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection final_grade_summary --type csv --fields grade,default_rate,fully_paid_rate --out "C:\Users\munga\Documents\LoanMongoProject\grade_analysis.csv"
+2026-02-24T16:58:35.279+0400    connected to: mongodb://localhost/
+2026-02-24T16:58:35.281+0400    exported 7 records
+PS C:\Users\munga>
+PS C:\Users\munga> # Export Pricing Summary
+PS C:\Users\munga> & "C:\Users\munga\Downloads\mongodb-database-tools-windows-x86_64-100.14.1\mongodb-database-tools-windows-x86_64-100.14.1\bin\mongoexport.exe" --db loan_analytics_db --collection final_pricing_summary --type csv --fields _id,avg_int_rate --out "C:\Users\munga\Documents\LoanMongoProject\pricing_alignment.csv"
+2026-02-24T16:58:35.387+0400    connected to: mongodb://localhost/
+2026-02-24T16:58:35.389+0400    exported 7 records
+PS C:\Users\munga>

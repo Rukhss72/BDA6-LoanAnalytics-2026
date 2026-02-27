@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "_id",
+    "addr_state",
+    "annual_inc",
+    "delinq_2yrs",
+    "dti",
+    "earliest_cr_line",
+    "emp_length",
+    "emp_title",
+    "grade",
+    "home_ownership",
+    "inq_last_6mths",
+    "installment",
+    "int_rate",
+    "issue_d",
+    "loan_amnt",
+    "loan_status",
+    "mths_since_last_delinq",
+    "mths_since_last_record",
+    "open_acc",
+    "pub_rec",
+    "purpose",
+    "revol_bal",
+    "revol_util",
+    "sub_grade",
+    "term",
+    "title",
+    "total_acc",
+    "verification_status"
+  ],
+  "properties": {
+    "_id": {
+      "$ref": "#/$defs/ObjectId"
+    },
+    "addr_state": {
+      "type": "string"
+    },
+    "annual_inc": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "$ref": "#/$defs/Double"
+        }
+      ]
+    },
+    "delinq_2yrs": {
+      "type": "integer"
+    },
+    "dti": {
+      "$ref": "#/$defs/Double"
+    },
+    "earliest_cr_line": {
+      "type": "string"
+    },
+    "emp_length": {
+      "type": "string"
+    },
+    "emp_title": {
+      "type": "string"
+    },
+    "grade": {
+      "type": "string"
+    },
+    "home_ownership": {
+      "type": "string"
+    },
+    "inq_last_6mths": {
+      "type": "integer"
+    },
+    "installment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Double"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "int_rate": {
+      "$ref": "#/$defs/Double"
+    },
+    "issue_d": {
+      "type": "string"
+    },
+    "loan_amnt": {
+      "type": "integer"
+    },
+    "loan_status": {
+      "type": "string"
+    },
+    "mths_since_last_delinq": {
+      "type": "integer"
+    },
+    "mths_since_last_record": {
+      "type": "integer"
+    },
+    "open_acc": {
+      "type": "integer"
+    },
+    "pub_rec": {
+      "type": "integer"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "revol_bal": {
+      "type": "integer"
+    },
+    "revol_util": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Double"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sub_grade": {
+      "type": "string"
+    },
+    "term": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "total_acc": {
+      "type": "integer"
+    },
+    "verification_status": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "ObjectId": {
+      "type": "object",
+      "properties": {
+        "$oid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{24}$"
+        }
+      },
+      "required": [
+        "$oid"
+      ],
+      "additionalProperties": false
+    },
+    "Double": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$numberDouble": {
+              "enum": [
+                "Infinity",
+                "-Infinity",
+                "NaN"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
